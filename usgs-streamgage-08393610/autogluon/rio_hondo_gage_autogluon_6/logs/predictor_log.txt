@@ -96,3 +96,103 @@ Total runtime: 581.77 s
 Best model: WeightedEnsemble
 Best model score: -338.0407
 Model not specified in predict, will default to the model with the best validation score: WeightedEnsemble
+Beginning AutoGluon training... Time limit = 600s
+AutoGluon will save models to 'rio_hondo_gage_autogluon_6'
+=================== System Info ===================
+AutoGluon Version:  1.1.1
+Python Version:     3.10.14
+Operating System:   Darwin
+Platform Machine:   arm64
+Platform Version:   Darwin Kernel Version 23.6.0: Mon Jul 29 21:16:46 PDT 2024; root:xnu-10063.141.2~1/RELEASE_ARM64_T8112
+CPU Count:          8
+GPU Count:          0
+Memory Avail:       5.31 GB / 16.00 GB (33.2%)
+Disk Space Avail:   579.97 GB / 926.35 GB (62.6%)
+===================================================
+Setting presets to: high_quality
+
+Fitting with arguments:
+{'enable_ensemble': True,
+ 'eval_metric': RMSE,
+ 'hyperparameters': 'default',
+ 'known_covariates_names': [],
+ 'num_val_windows': 8,
+ 'prediction_length': 6,
+ 'quantile_levels': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+ 'random_seed': 123,
+ 'refit_every_n_windows': 1,
+ 'refit_full': False,
+ 'skip_model_selection': False,
+ 'target': 'series',
+ 'time_limit': 600,
+ 'verbosity': 2}
+
+Inferred time series frequency: 'H'
+Provided train_data has 31658 rows (NaN fraction=1.5%), 2 time series. Median time series length is 15829 (min=15829, max=15829). 
+
+Provided data contains following columns:
+	target: 'series'
+
+AutoGluon will gauge predictive performance using evaluation metric: 'RMSE'
+	This metric's sign has been flipped to adhere to being higher_is_better. The metric score can be multiplied by -1 to get the metric value.
+===================================================
+
+Starting training. Start time is 2024-10-21 21:33:09
+Models that will be trained: ['SeasonalNaive', 'RecursiveTabular', 'DirectTabular', 'CrostonSBA', 'NPTS', 'DynamicOptimizedTheta', 'AutoETS', 'AutoARIMA', 'Chronos[base]', 'TemporalFusionTransformer', 'DeepAR', 'PatchTST']
+Training timeseries model SeasonalNaive. Training for up to 46.0s of the 598.6s of remaining time.
+	-1757.0438    = Validation score (-RMSE)
+	1.96    s     = Training runtime
+	0.01    s     = Validation (prediction) runtime
+Training timeseries model RecursiveTabular. Training for up to 49.7s of the 596.6s of remaining time.
+	-1675.7663    = Validation score (-RMSE)
+	48.52   s     = Training runtime
+	0.10    s     = Validation (prediction) runtime
+Training timeseries model DirectTabular. Training for up to 49.8s of the 548.0s of remaining time.
+	-1070.8815    = Validation score (-RMSE)
+	8.29    s     = Training runtime
+	0.06    s     = Validation (prediction) runtime
+Training timeseries model CrostonSBA. Training for up to 54.0s of the 539.6s of remaining time.
+	-921.1674     = Validation score (-RMSE)
+	9.30    s     = Training runtime
+	0.01    s     = Validation (prediction) runtime
+Training timeseries model NPTS. Training for up to 58.9s of the 530.3s of remaining time.
+	-1045.5609    = Validation score (-RMSE)
+	0.45    s     = Training runtime
+	0.04    s     = Validation (prediction) runtime
+Training timeseries model DynamicOptimizedTheta. Training for up to 66.2s of the 529.8s of remaining time.
+	-470.2492     = Validation score (-RMSE)
+	18.57   s     = Training runtime
+	0.26    s     = Validation (prediction) runtime
+Training timeseries model AutoETS. Training for up to 73.0s of the 511.0s of remaining time.
+	-477.5498     = Validation score (-RMSE)
+	35.96   s     = Training runtime
+	3.83    s     = Validation (prediction) runtime
+Training timeseries model AutoARIMA. Training for up to 78.5s of the 471.2s of remaining time.
+	-472.2563     = Validation score (-RMSE)
+	21.94   s     = Training runtime
+	0.45    s     = Validation (prediction) runtime
+Training timeseries model Chronos[base]. Training for up to 89.8s of the 448.8s of remaining time.
+	Warning: Exception caused Chronos[base] to fail during training... Skipping this model.
+	Chronos[base]/W0 requires a GPU to run, but no GPU was detected. Please make sure that you are using a computer with a CUDA-compatible GPU and `import torch; torch.cuda.is_available()` returns `True`.
+Training timeseries model TemporalFusionTransformer. Training for up to 112.1s of the 448.4s of remaining time.
+	-924.5894     = Validation score (-RMSE)
+	110.79  s     = Training runtime
+	0.04    s     = Validation (prediction) runtime
+Training timeseries model DeepAR. Training for up to 112.5s of the 337.6s of remaining time.
+	-874.6582     = Validation score (-RMSE)
+	111.01  s     = Training runtime
+	0.09    s     = Validation (prediction) runtime
+Training timeseries model PatchTST. Training for up to 113.2s of the 226.5s of remaining time.
+	-928.5041     = Validation score (-RMSE)
+	111.68  s     = Training runtime
+	0.01    s     = Validation (prediction) runtime
+Fitting simple weighted ensemble.
+	Ensemble weights: {'AutoARIMA': 0.01, 'DynamicOptimizedTheta': 0.86, 'NPTS': 0.13}
+	-448.3266     = Validation score (-RMSE)
+	2.61    s     = Training runtime
+	0.75    s     = Validation (prediction) runtime
+Training complete. Models trained: ['SeasonalNaive', 'RecursiveTabular', 'DirectTabular', 'CrostonSBA', 'NPTS', 'DynamicOptimizedTheta', 'AutoETS', 'AutoARIMA', 'TemporalFusionTransformer', 'DeepAR', 'PatchTST', 'WeightedEnsemble']
+Total runtime: 487.09 s
+Best model: WeightedEnsemble
+Best model score: -448.3266
+Model not specified in predict, will default to the model with the best validation score: WeightedEnsemble
