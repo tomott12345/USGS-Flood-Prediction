@@ -1,0 +1,76 @@
+Beginning AutoGluon training... Time limit = 600s
+AutoGluon will save models to './models/01388500_model_1'
+=================== System Info ===================
+AutoGluon Version:  1.1.1
+Python Version:     3.10.15
+Operating System:   Darwin
+Platform Machine:   arm64
+Platform Version:   Darwin Kernel Version 23.6.0: Mon Jul 29 21:16:46 PDT 2024; root:xnu-10063.141.2~1/RELEASE_ARM64_T8112
+CPU Count:          8
+GPU Count:          0
+Memory Avail:       5.51 GB / 16.00 GB (34.4%)
+Disk Space Avail:   495.25 GB / 926.35 GB (53.5%)
+===================================================
+Setting presets to: fast_training
+
+Fitting with arguments:
+{'enable_ensemble': True,
+ 'eval_metric': RMSE,
+ 'hyperparameters': 'very_light',
+ 'known_covariates_names': [],
+ 'num_val_windows': 8,
+ 'prediction_length': 1,
+ 'quantile_levels': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+ 'random_seed': 123,
+ 'refit_every_n_windows': 1,
+ 'refit_full': False,
+ 'skip_model_selection': False,
+ 'target': 'series',
+ 'time_limit': 600,
+ 'verbosity': 2}
+
+Inferred time series frequency: 'h'
+Provided train_data has 70068 rows (NaN fraction=0.0%), 4 time series. Median time series length is 17517 (min=17517, max=17517). 
+
+Provided data contains following columns:
+	target: 'series'
+
+AutoGluon will gauge predictive performance using evaluation metric: 'RMSE'
+	This metric's sign has been flipped to adhere to being higher_is_better. The metric score can be multiplied by -1 to get the metric value.
+===================================================
+
+Starting training. Start time is 2024-11-21 02:54:19
+Models that will be trained: ['Naive', 'SeasonalNaive', 'RecursiveTabular', 'DirectTabular', 'ETS', 'Theta']
+Training timeseries model Naive. Training for up to 85.2s of the 596.4s of remaining time.
+	-1.3284       = Validation score (-RMSE)
+	1.47    s     = Training runtime
+	0.02    s     = Validation (prediction) runtime
+Training timeseries model SeasonalNaive. Training for up to 99.1s of the 594.9s of remaining time.
+	-8.2113       = Validation score (-RMSE)
+	0.42    s     = Training runtime
+	0.02    s     = Validation (prediction) runtime
+Training timeseries model RecursiveTabular. Training for up to 118.9s of the 594.4s of remaining time.
+	-4.5594       = Validation score (-RMSE)
+	42.59   s     = Training runtime
+	0.07    s     = Validation (prediction) runtime
+Training timeseries model DirectTabular. Training for up to 137.9s of the 551.8s of remaining time.
+	-32.1817      = Validation score (-RMSE)
+	8.76    s     = Training runtime
+	0.10    s     = Validation (prediction) runtime
+Training timeseries model ETS. Training for up to 181.0s of the 542.9s of remaining time.
+	-1.2263       = Validation score (-RMSE)
+	35.26   s     = Training runtime
+	3.71    s     = Validation (prediction) runtime
+Training timeseries model Theta. Training for up to 252.0s of the 503.9s of remaining time.
+	-1.2387       = Validation score (-RMSE)
+	21.24   s     = Training runtime
+	2.74    s     = Validation (prediction) runtime
+Fitting simple weighted ensemble.
+	Ensemble weights: {'DirectTabular': 0.02, 'ETS': 0.96, 'SeasonalNaive': 0.01}
+	-0.8189       = Validation score (-RMSE)
+	1.42    s     = Training runtime
+	3.84    s     = Validation (prediction) runtime
+Training complete. Models trained: ['Naive', 'SeasonalNaive', 'RecursiveTabular', 'DirectTabular', 'ETS', 'Theta', 'WeightedEnsemble']
+Total runtime: 119.05 s
+Best model: WeightedEnsemble
+Best model score: -0.8189
