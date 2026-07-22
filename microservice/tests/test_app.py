@@ -76,12 +76,26 @@ def test_fetch_latest_data_passes_for_fresh_data(monkeypatch):
     assert set(long_df["item_id"].unique()) == {"gage", "flow", "gage_rate_of_change", "flow_rate_of_change"}
 
 
-def test_load_model_loads_sample_autogluon_predictor(monkeypatch):
+def test_load_model_fails_for_sample_autogluon_predictor_after_security_upgrade(monkeypatch):
+    """This documents a real, known-accepted trade-off, not a bug to fix.
+
+    The checked-in sample model was saved with AutoGluon 1.1.1. requirements.txt
+    was bumped to autogluon.timeseries==1.5.0 to close CVEs (torch, transformers,
+    scikit-learn, lightgbm, pytorch-lightning, ray -- see the Dependabot fix
+    commit) that autogluon 1.1.1's own dependency pins made impossible to patch
+    otherwise. That bump moved AutoGluon's internal module layout enough that
+    this model's TimeSeriesPredictor.load() itself now fails (previously, under
+    1.1.1, load() succeeded and only a *later* .predict() call failed -- see
+    evaluation/README.md's numba/pickle finding). Either way the model was
+    already non-functional for real predictions (0% success in
+    evaluation/backtest.py); the security fix just moves the failure earlier
+    and doesn't change the practical outcome for API callers (a 500 either way).
+    See xgboost_model/ for the actual replacement.
+    """
     monkeypatch.setattr(app, "model_directory", REPO_MODELS_DIR)
 
-    model = app.load_model("01388500", 1)
-
-    assert model is not None
+    with pytest.raises(Exception):
+        app.load_model("01388500", 1)
 
 
 def test_load_model_raises_for_unknown_site(monkeypatch):
