@@ -1,0 +1,14 @@
+site_code,label,status,horizon_hours,engine,seconds,n_folds,mae_ft,rmse_ft,nse,ci80_coverage,ci80_nominal
+01388500,production_h1,no_valid_folds,1.0,autogluon,32.2,,,,,,
+01388500,pompton_h1,ok,1.0,autogluon,8.4,10.0,0.01,0.0134,0.992,0.8,0.8
+01388500,pompton_h3,ok,3.0,autogluon,29.9,10.0,0.0227,0.025,0.969,0.9,0.8
+01388500,pompton_h6,ok,6.0,autogluon,10.3,10.0,0.0229,0.0285,0.9553,0.8,0.8
+01388500,pompton_h12,ok,12.0,autogluon,0.3,10.0,0.045,0.0548,0.7743,0.7,0.8
+01388500,pompton_h24,ok,24.0,autogluon,0.9,10.0,0.2016,0.4638,-0.2426,0.7,0.8
+01388500,pompton_h48,load_failed: AttributeError: Can't get attribute 'TimeSeriesTrainer' on <module 'autogluon.timeseries.trainer' from '/Users/tott/anaconda3/lib/python3.11/site-packages/autogluon/timeseries/trainer/__init__.py'>,,autogluon,0.0,,,,,,
+01388500,xgboost_h1,ok,1.0,xgboost,18.4,10.0,0.0117,0.0144,0.9907,0.3,0.8
+01388500,xgboost_h3,ok,3.0,xgboost,10.4,10.0,0.0247,0.0271,0.9634,0.3,0.8
+01388500,xgboost_h6,ok,6.0,xgboost,11.7,10.0,0.0343,0.0354,0.9307,0.2,0.8
+01388500,xgboost_h12,ok,12.0,xgboost,8.8,10.0,0.058,0.0693,0.6402,0.3,0.8
+01388500,xgboost_h24,ok,24.0,xgboost,8.0,9.0,0.2274,0.4806,-0.2038,0.111,0.8
+01388500,xgboost_h48,ok,48.0,xgboost,4.7,7.0,0.301,0.5472,-0.2417,0.143,0.8

@@ -1,0 +1,36 @@
+#
+# ---------------------------------- WARNING ----------------------------------------
+# Some of the data that you have obtained from this U.S. Geological Survey database
+# may not have received Director's approval. Any use of these data is done at the
+# user's own risk, and USGS does not guarantee accuracy or completeness.
+# ---------------------------------------------------------------------------------
+#
+# US Geological Survey
+# retrieved: 2024-10-20 09:00:00 -04:00	(caww01)
+#
+# Data for the following 1 site(s) are contained in this file
+#    USGS 01388500 POMPTON RIVER AT PATERSON, NJ
+# -----------------------------------------------------------------------------------
+#
+# Data provided for site 01388500
+#    TS_ID       Parameter Description
+#    141166       00065   Gage height, feet
+#
+# Data-value qualification codes included in this output:
+#     A  Approved for publication -- Processing and review completed.
+#     P  Provisional data subject to revision.
+#
+# Sites in this file include:
+#  USGS 01388500 POMPTON RIVER AT PATERSON, NJ
+#
+# ---------------------------------------------------------------------------------
+#
+# Additional filler comment line 1
+# Additional filler comment line 2
+# Additional filler comment line 3
+agency_cd	site_no	datetime	tz_cd	141166_00065	141166_00065_cd
+5s	15s	20d	6s	14n	10s
+USGS	01388500	2024-10-20 00:00	EST	2.34	P
+USGS	01388500	2024-10-20 00:15	EST	2.35	P
+USGS	01388500	2024-10-20 00:30	EST	2.36	P
+USGS	01388500	2024-10-20 00:45	EST	2.37	P

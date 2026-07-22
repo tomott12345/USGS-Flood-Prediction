@@ -1,0 +1,7 @@
+label,status,horizon_hours,n_folds,mae_ft,rmse_ft,nse,ci80_coverage,ci80_nominal,avg_margin_ft,seconds
+xgboost_calibrated_h1,ok,1,15,0.1248,0.1428,0.8515,0.2,0.8,0.1126,3.3
+xgboost_calibrated_h3,ok,3,15,0.1448,0.167,0.7903,0.2,0.8,0.1207,4.4
+xgboost_calibrated_h6,ok,6,15,0.1493,0.1795,0.7385,0.267,0.8,0.1226,4.7
+xgboost_calibrated_h12,ok,12,15,0.154,0.1822,0.6966,0.267,0.8,0.1158,4.6
+xgboost_calibrated_h24,ok,24,14,0.1981,0.2731,-0.6389,0.286,0.8,0.1069,9.9
+xgboost_calibrated_h48,ok,48,13,0.2268,0.3238,-4.5383,0.385,0.8,0.1168,5.8

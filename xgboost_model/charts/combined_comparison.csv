@@ -1,0 +1,13 @@
+engine,horizon_hours,mae_ft,ci80_coverage,ci80_nominal
+autogluon,1,0.011,0.9,0.8
+autogluon,3,0.0185,1.0,0.8
+autogluon,6,0.018,0.9,0.8
+xgboost_naive_quantile,1,0.0117,0.3,0.8
+xgboost_naive_quantile,3,0.0247,0.3,0.8
+xgboost_naive_quantile,6,0.0343,0.2,0.8
+xgboost_conformal,1,0.0295,0.986,0.8
+xgboost_conformal,3,0.0447,0.981,0.8
+xgboost_conformal,6,0.0761,0.967,0.8
+xgboost_conformal_tuned,1,0.0553,0.967,0.8
+xgboost_conformal_tuned,3,0.0717,0.972,0.8
+xgboost_conformal_tuned,6,0.1116,0.948,0.8

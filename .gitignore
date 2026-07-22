@@ -1,3 +1,7 @@
 
 .DS_Store
 usgs-streamgage-01473730/.DS_Store
+xgboost_model/.cache_openmeteo*
+xgboost_model/artifacts/upstream_cache/
+**/__pycache__/
+.pytest_cache/
