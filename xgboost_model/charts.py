@@ -103,6 +103,69 @@ def plot_forecast_band(site_code, horizon_hours, days=45, save_path=None):
     return fig
 
 
+def plot_forecast_lead_time(site_code, horizon_hours, days=45, save_path=None):
+    """Same data as plot_forecast_band, aligned differently to answer a
+    different question: does the forecast actually give advance warning?
+
+    plot_forecast_band plots the prediction at its *target* time (issue_time
+    + horizon) right next to the actual reading for that same moment -- the
+    standard way to visualize point-forecast accuracy, but it can *never*
+    show lead time, because a perfectly accurate forecast and a merely
+    persistent one look identical under that alignment (both just match the
+    actual line at each moment).
+
+    Here, the actual line stays at its true, natural occurrence times, but
+    the predicted line and its interval are shifted back to the *issue*
+    time (when the forecast was actually made) instead of the target time.
+    If the model had real lead time, its predicted line would show a rise
+    horizon_hours to the *left* of the actual line's own rise. If the model
+    is reactive (only extrapolating a rise that's already visible in its own
+    recent inputs -- see README.md), the predicted line's rise lands at
+    essentially the same moment as the actual line's, because "predicted for
+    T+horizon, issued at T" ends up close to whatever the reading already
+    was at T.
+    """
+    result = evaluate_fixed_model(site_code, horizon_hours, days=days, return_predictions=True)
+    if result["status"] != "ok":
+        raise RuntimeError(f"Cannot chart {site_code} h={horizon_hours}: {result['status']}")
+
+    preds = result["predictions"]
+    issue_time = preds["timestamp"] - pd.Timedelta(hours=horizon_hours)
+
+    fig, ax = _new_axis(figsize=(10, 5))
+
+    ax.fill_between(
+        issue_time, preds["lower"], preds["upper"],
+        color=CATEGORICAL["blue"], alpha=0.15, linewidth=0, zorder=1,
+        label=f"{result['ci80_nominal']:.0%} interval, shown at issue time",
+    )
+    ax.plot(
+        preds["timestamp"], preds["actual"],
+        color=COLOR_INK_PRIMARY, linewidth=1.6, zorder=3, label="Actual gage height (true time)",
+    )
+    ax.plot(
+        issue_time, preds["predicted"],
+        color=CATEGORICAL["orange"], linewidth=1.6, zorder=2,
+        label=f"Predicted, shown at issue time (i.e. {horizon_hours}h before its target)",
+    )
+
+    ax.set_ylabel("Gage height (ft)", color=COLOR_INK_SECONDARY, fontsize=10)
+    ax.set_title(
+        f"Pompton River (site {site_code}) — {horizon_hours}h-ahead forecast, aligned by issue time\n"
+        f"a real early-warning signal would show the orange line rising {horizon_hours}h left of the black line",
+        color=COLOR_INK_PRIMARY, fontsize=11, loc="left",
+    )
+    fig.autofmt_xdate()
+    ax.legend(frameon=False, loc="upper left", fontsize=9, labelcolor=COLOR_INK_SECONDARY)
+    fig.tight_layout()
+
+    if save_path:
+        fig.savefig(save_path, dpi=150, facecolor=COLOR_SURFACE)
+        plt.close(fig)
+        return save_path
+    return fig
+
+
 def plot_calibration_reliability(results_df, save_path=None):
     """Grouped bars: empirical CI coverage per engine per horizon, against a
     dashed nominal-coverage reference line. The gap between bar and line *is*
@@ -216,6 +279,11 @@ if __name__ == "__main__":
     print("Rendering forecast-with-band charts...")
     for horizon in HORIZONS:
         path = plot_forecast_band(site_code, horizon, save_path=os.path.join(CHARTS_DIR, f"forecast_h{horizon}.png"))
+        print(f"  saved {path}")
+
+    print("Rendering issue-time-aligned lead-time charts...")
+    for horizon in HORIZONS:
+        path = plot_forecast_lead_time(site_code, horizon, save_path=os.path.join(CHARTS_DIR, f"lead_time_h{horizon}.png"))
         print(f"  saved {path}")
 
     print("\nAssembling cross-engine comparison table...")
