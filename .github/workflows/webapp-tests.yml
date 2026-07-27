@@ -1,0 +1,43 @@
+name: Webapp tests
+
+# Mirrors microservice-tests.yml's role for webapp/: go vet, gofmt, build,
+# and the unit test suite (validation, manifest parsing, the microservice
+# HTTP client against an httptest.Server, job subscribe/replay semantics,
+# and subprocess line-buffering against a throwaway shell script) run
+# automatically on every push and pull request, entirely offline -- no
+# Python, no real USGS/microservice dependency needed for any of it.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: webapp
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: gofmt check
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "The following files are not gofmt-formatted:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go build
+        run: go build ./...
+
+      - name: go test
+        run: go test ./... -v -race
