@@ -1,0 +1,39 @@
+{{define "index.html"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Dashboard — USGS Flood Forecasting</title>
+  {{template "head" .}}
+</head>
+<body>
+  {{template "nav" .}}
+  <main class="page">
+    <div class="page-header">
+      <h1>Trained sites</h1>
+      <a class="button button-primary" href="/train">Train a new site</a>
+    </div>
+
+    {{if not .Sites}}
+      <p class="empty-state">
+        No sites trained yet. <a href="/train">Train your first one</a> — give it a USGS streamgage
+        site code (e.g. <code>01388500</code>) and it discovers upstream gages, auto-selects the best
+        feature set per horizon, and saves a deployable model in a few minutes.
+      </p>
+    {{else}}
+      <div class="card-grid">
+        {{range .Sites}}
+        <a class="card" href="/sites/{{.SiteCode}}">
+          <div class="card-title">{{.SiteCode}}</div>
+          <div class="card-meta">trained {{.TrainedAt}}</div>
+          <div class="card-body">
+            <span class="chip">{{len .SortedHorizons}} horizon(s)</span>
+            {{if .UpstreamSiteCodes}}<span class="chip">{{len .UpstreamSiteCodes}} upstream gage(s)</span>{{end}}
+          </div>
+        </a>
+        {{end}}
+      </div>
+    {{end}}
+  </main>
+</body>
+</html>
+{{end}}

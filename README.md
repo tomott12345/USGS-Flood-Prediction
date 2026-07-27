@@ -15,6 +15,8 @@ The inspiration for this analysis comes from the paper [Data-Driven Flood Alert 
 - `evaluation/` -- offline scripts for checking model accuracy and testing feature ideas (backtesting, precipitation hypothesis testing) against fresh USGS data, without touching production. See `evaluation/README.md`; it also documents the AutoGluon pickle/numba version-mismatch failure that motivated the XGBoost replacement below.
 - `xgboost_model/` -- the XGBoost replacement for AutoGluon: conformal-calibrated point forecasts, upstream-gage and weather enrichment, hyperparameter tuning, and (new) `auto_pipeline.py`, a single command that trains and exports a deployable model for any USGS streamgage. See `xgboost_model/README.md` for the full write-up, including why native XGBoost JSON was chosen over AutoGluon's pickle format.
 - `microservice/` -- the FastAPI service. Serves the original AutoGluon models via `/predict/{site_code}/{forecast_length}`, and (new) also serves `auto_pipeline.py`'s XGBoost models via an additive `/predict/xgboost/{site_code}/{forecast_length}` route. See `microservice/readme.md`.
+- `webapp/` -- (new) a browser front end for the whole flow: enter a USGS site code, watch `auto_pipeline.py` train and `charts.py` render live over Server-Sent Events, then click "verify live scoring" to prove the microservice is serving the new model. Go standard library only, no JS framework, no CDN. See `webapp/README.md`.
+- `Dockerfile` / `docker-entrypoint.sh` -- (new) bundles `webapp/`, the Python training pipeline, and the microservice into one image, following the pattern in the sibling `usgs-edge-app` repo's `dockerfile.optimized`.
 
 ## Training and deploying a new site
 
@@ -34,4 +36,14 @@ curl "http://localhost:8000/models/xgboost/01388500"   # what horizons are train
 ```
 
 This has been run end-to-end against the Pompton River (01388500) and the Susquehanna River above the dam at Sunbury, PA (01553990) -- the latter also surfaced and fixed a real gap where sites that never report discharge (impoundment/dam gages) previously failed outright instead of falling back to gage-height-only features.
+
+### Or do all of this from a browser
+
+`webapp/` wraps the same command line flow in a web UI: enter a site code, watch training and chart rendering happen live, then click a button to prove the microservice is actually serving the new model.
+
+```
+cd webapp && go run .          # http://localhost:8080
+```
+
+See `webapp/README.md` for configuration and the Docker-packaged version.
 

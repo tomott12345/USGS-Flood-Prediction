@@ -1,0 +1,27 @@
+{{define "job.html"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Training {{.Job.SiteCode}} — USGS Flood Forecasting</title>
+  {{template "head" .}}
+</head>
+<body>
+  {{template "nav" .}}
+  <main class="page">
+    <div class="page-header">
+      <h1>Training {{.Job.SiteCode}}</h1>
+      <span id="status-badge">{{template "status_badge" .Job.Status}}</span>
+    </div>
+    <p class="muted">horizons {{.Job.Horizons}} &middot; {{.Job.Days}}-day training window</p>
+
+    <h2>Live output</h2>
+    <pre id="log" class="log-pane"></pre>
+
+    <div id="error-panel" class="error" hidden></div>
+    <div id="results-panel"></div>
+  </main>
+  <script src="/static/js/app.js"></script>
+  <script>watchJob({{.Job.ID}}, {{.Job.SiteCode}});</script>
+</body>
+</html>
+{{end}}

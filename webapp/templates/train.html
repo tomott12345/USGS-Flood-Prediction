@@ -1,0 +1,60 @@
+{{define "train.html"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Train a site — USGS Flood Forecasting</title>
+  {{template "head" .}}
+</head>
+<body>
+  {{template "nav" .}}
+  <main class="page page-narrow">
+    <h1>Train a new site</h1>
+    <p class="muted">
+      Runs <code>xgboost_model/auto_pipeline.py</code>: discovers upstream gages via USGS's NLDI
+      network graph, auto-selects baseline vs. upstream+weather-enriched+tuned features per horizon
+      by comparing held-out accuracy, and saves the winner as a deployable model. A cold run
+      (no cached upstream-gage scan yet) can take several minutes.
+    </p>
+
+    <form id="train-form" class="form">
+      <label for="site_code">USGS site code</label>
+      <input
+        type="text" id="site_code" name="site_code" required
+        pattern="[0-9]{8,15}" placeholder="e.g. 01388500"
+        autocomplete="off">
+      <p class="field-hint">8-15 digits. Find yours at <a href="https://waterdata.usgs.gov/nwis/rt" target="_blank" rel="noopener">waterdata.usgs.gov</a>.</p>
+
+      <fieldset class="horizons">
+        <legend>Forecast horizons</legend>
+        <label><input type="checkbox" name="horizons" value="1" checked> 1 hour</label>
+        <label><input type="checkbox" name="horizons" value="3" checked> 3 hours</label>
+        <label><input type="checkbox" name="horizons" value="6" checked> 6 hours</label>
+
+        <details>
+          <summary>Longer horizons (not recommended)</summary>
+          <p class="warning">
+            This repo's own backtesting found NSE goes negative — worse than just predicting the
+            mean — at 12h and beyond, for every feature set and tuning configuration tried so far.
+            See <code>xgboost_model/README.md</code>. Enable these to re-test that on a new site,
+            not because they're expected to perform well.
+          </p>
+          <label><input type="checkbox" name="horizons" value="12"> 12 hours</label>
+          <label><input type="checkbox" name="horizons" value="24"> 24 hours</label>
+          <label><input type="checkbox" name="horizons" value="48"> 48 hours</label>
+        </details>
+      </fieldset>
+
+      <label for="days">Training window (days)</label>
+      <input type="number" id="days" name="days" value="60" min="14" max="120">
+      <p class="field-hint">USGS's instantaneous-values service generally retains ~120 days of sub-daily history.</p>
+
+      <button type="submit" class="button button-primary">Train model</button>
+    </form>
+
+    <p id="train-error" class="error" hidden></p>
+  </main>
+  <script src="/static/js/app.js"></script>
+  <script>wireTrainForm();</script>
+</body>
+</html>
+{{end}}

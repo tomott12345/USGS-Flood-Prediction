@@ -5,3 +5,5 @@ xgboost_model/.cache_openmeteo*
 xgboost_model/artifacts/upstream_cache/
 **/__pycache__/
 .pytest_cache/
+webapp/webapp-server
+webapp/usgs-flood-webapp

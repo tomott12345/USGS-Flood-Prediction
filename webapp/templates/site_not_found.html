@@ -1,0 +1,16 @@
+{{define "site_not_found.html"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Not found — USGS Flood Forecasting</title>
+  {{template "head" .}}
+</head>
+<body>
+  {{template "nav" .}}
+  <main class="page page-narrow">
+    <h1>No model trained yet</h1>
+    <p>Site <code>{{.}}</code> hasn't been trained in this app. <a href="/train">Train it now</a>.</p>
+  </main>
+</body>
+</html>
+{{end}}

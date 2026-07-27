@@ -1,0 +1,11 @@
+.git
+**/__pycache__
+**/.pytest_cache
+**/*.pyc
+**/.ipynb_checkpoints
+**/.DS_Store
+webapp/webapp-server
+usgs-streamgage-*
+xgboost_model/.cache_openmeteo*
+microservice/tests
+*.md

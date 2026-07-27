@@ -1,0 +1,72 @@
+{{define "site.html"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <title>{{.SiteCode}} — USGS Flood Forecasting</title>
+  {{template "head" .}}
+</head>
+<body>
+  {{template "nav" .}}
+  <main class="page">
+    <div class="page-header">
+      <h1>{{.SiteCode}}</h1>
+      <a class="button" href="/train">Retrain</a>
+    </div>
+    <p class="muted">
+      trained {{.Manifest.TrainedAt}} &middot; {{.Manifest.TrainingDays}}-day window
+      {{if .Manifest.UpstreamSiteCodes}} &middot; upstream gages: {{range .Manifest.UpstreamSiteCodes}}<code>{{.}}</code> {{end}}{{end}}
+    </p>
+
+    <h2>Horizons</h2>
+    <table class="results-table">
+      <thead>
+        <tr>
+          <th>Horizon</th>
+          <th>Status</th>
+          <th>Feature set</th>
+          <th>Baseline MAE (ft)</th>
+          <th>Enriched+tuned MAE (ft)</th>
+          <th>Conformal margin (ft)</th>
+          <th>Live scoring</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range $h := .Manifest.SortedHorizons}}
+        {{$r := index $.Manifest.Horizons (printf "%d" $h)}}
+        <tr>
+          <td>{{$h}}h</td>
+          <td>{{$r.Status}}</td>
+          <td>{{if eq $r.Status "ok"}}{{$r.FeatureSet}}{{else}}—{{end}}</td>
+          <td>{{if eq $r.Status "ok"}}{{formatFloat $r.Selection.BaselineMAEFt}}{{else}}—{{end}}</td>
+          <td>{{if eq $r.Status "ok"}}{{formatFloat $r.Selection.EnrichedTunedMAEFt}}{{else}}—{{end}}</td>
+          <td>{{if eq $r.Status "ok"}}{{formatFloat $r.ConformalMarginFt}}{{else}}—{{end}}</td>
+          <td>
+            {{if eq $r.Status "ok"}}
+            <button class="button button-small verify-btn" data-site="{{$.SiteCode}}" data-horizon="{{$h}}">Verify</button>
+            <div class="verify-result" data-horizon-result="{{$h}}"></div>
+            {{else}}—{{end}}
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+
+    {{if .ChartFiles}}
+    <h2>Charts</h2>
+    <div class="chart-grid">
+      {{range .ChartFiles}}
+      <a href="/charts/{{$.SiteCode}}/{{.}}" target="_blank" rel="noopener">
+        <img src="/charts/{{$.SiteCode}}/{{.}}" alt="{{.}}" loading="lazy">
+        <div class="chart-caption">{{.}}</div>
+      </a>
+      {{end}}
+    </div>
+    {{else}}
+    <p class="muted">No charts rendered for this site yet.</p>
+    {{end}}
+  </main>
+  <script src="/static/js/app.js"></script>
+  <script>wireVerifyButtons(document);</script>
+</body>
+</html>
+{{end}}
