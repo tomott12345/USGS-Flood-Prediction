@@ -134,7 +134,17 @@ type apiError struct {
 }
 
 func (a *App) handleAPITrain(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
+	// ParseMultipartForm, not ParseForm: the browser posts a FormData body
+	// (app.js's wireTrainForm), which is multipart/form-data, not
+	// application/x-www-form-urlencoded -- ParseForm never reads multipart
+	// bodies at all, and calling it here would additionally block
+	// FormValue's own lazy multipart-parsing fallback later (it only
+	// triggers when r.Form is still nil). ParseMultipartForm handles both:
+	// it parses the multipart body directly, and falls back to ParseForm
+	// internally for a plain urlencoded body (returning ErrNotMultipart,
+	// which isn't a real failure -- r.Form is still populated correctly in
+	// that case, exactly as net/http's own FormValue implementation treats it).
+	if err := r.ParseMultipartForm(32 << 20); err != nil && err != http.ErrNotMultipart {
 		writeJSONError(w, http.StatusBadRequest, "could not parse form: "+err.Error())
 		return
 	}
