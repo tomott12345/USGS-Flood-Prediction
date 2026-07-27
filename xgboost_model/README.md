@@ -163,7 +163,51 @@ actively hurting at 12h+. Further gains would likely need cross-validated
 different approach for 24h+ given how little signal even the baseline
 finds there.
 
-## Regenerating
+## `auto_pipeline.py` -- one command, any site
+
+Everything above was originally worked out by hand, for Pompton only: which
+upstream gages to use, and whether the enriched+tuned feature set actually
+beats the baseline at a given horizon (the tuning section shows that answer
+flips by horizon, and isn't guaranteed to generalize by site either).
+`auto_pipeline.py` automates both decisions instead of hard-coding Pompton's
+answer, so a new site is one command:
+
+```
+python auto_pipeline.py 01388500
+python auto_pipeline.py 01553990 --horizons 1 3 6 --days 60
+```
+
+For the given site it: (1) discovers upstream gages via `upstream.py`'s NLDI
+scan, (2) per horizon, runs the same held-out baseline-vs-enriched+tuned
+comparison documented above via `evaluate_fixed.evaluate_fixed_model` and
+picks whichever wins on held-out MAE for *that* site and horizon, (3) refits
+the winner on the full training window and saves it via XGBoost's native
+`save_model()` JSON (same format `train.py` already uses), plus a
+`metadata.json` rich enough for the microservice to reproduce the exact same
+features live: `feature_set`, the exact `upstream_site_codes` used, tuned
+hyperparameters, the conformal margin, and `feature_columns` in the exact
+order the model expects (XGBoost validates feature name *and order* at
+predict time -- a reordered-but-same-set DataFrame raises).
+
+It also writes an `artifacts/{site_code}_manifest.json` recording what was
+chosen per horizon and why (baseline vs. enriched+tuned MAE side by side),
+so the auto-selected trade-off is auditable instead of a black box.
+
+Tested end-to-end against both Pompton (01388500, a flashy natural
+tributary confluence) and 01553990 (Susquehanna River above the dam at
+Sunbury, PA -- confirms upstream discovery correctly crosses onto *both*
+the Susquehanna mainstem and the West Branch Susquehanna). The Sunbury site
+also turned up a real gap the single-site prototype never hit: some sites
+(impoundment/dam gages) only ever report gage height, never discharge.
+`fetch_site_history` (`evaluation/usgs_data.py`) now degrades to a
+gage-height-only history instead of failing outright, and `build_features`
+skips the flow-derived columns when it detects an all-NaN Flow column --
+both changes are no-ops for any site that does report flow.
+
+Standalone dependencies for this directory (previously undocumented,
+assumed an ambient environment) are now in `requirements.txt`.
+
+## Regenerating the original Pompton-only artifacts
 
 ```
 python train.py 01388500 1 3 6 12 24 48
@@ -171,9 +215,21 @@ python evaluate_fixed.py 01388500 1 3 6 12 24 48
 python charts.py
 ```
 
+`charts.py` also takes an optional site code (`python charts.py 01553990`)
+to chart any site auto_pipeline.py has evaluated; only the historical
+AutoGluon/naive-quantile comparison lines are Pompton-specific (those CSVs
+were never recorded for other sites), everything else charts live.
+
+## Wired into the microservice
+
+`microservice/app.py` now has an additive `GET /predict/xgboost/{site_code}/{forecast_length}`
+route (and `GET /models/xgboost/{site_code}` to list what's trained) serving
+whatever `auto_pipeline.py` saved to `artifacts/` -- see
+`microservice/readme.md`. The existing AutoGluon `/predict/{site_code}/{forecast_length}`
+route is untouched.
+
 ## Next steps, if this gets extended
 
-- Wire up other sites (Schuylkill, Rio Hondo) -- only Pompton has been done.
 - The 24h/48h point forecasts need real feature work (this is still the
   original lag-only feature set from `evaluation/precip_hypothesis.py`) --
   precipitation didn't help in that test, but wasn't tried at the longer
@@ -181,5 +237,6 @@ python charts.py
 - Tighten the conformal margins if the current conservatism proves overly
   wide in practice (e.g. adaptive conformal inference, which adjusts alpha
   online based on recent coverage, instead of a fixed margin).
-- Wire into `microservice/app.py` as an alternate/fallback engine once
-  accuracy at longer horizons is addressed.
+- Promote the XGBoost route from "alternate/additive" to the primary
+  `/predict` path once accuracy at longer horizons is addressed and it's
+  been run against more sites than the two above.

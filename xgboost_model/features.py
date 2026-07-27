@@ -30,12 +30,21 @@ PRECIP_ROLLING_WINDOWS = [6, 24]
 
 
 def build_features(history_df):
+    # Some sites (dam/impoundment gages) never report discharge at all --
+    # fetch_site_history degrades to an all-NaN Flow column for those rather
+    # than failing (see evaluation/usgs_data.py). Detect that here and skip
+    # the flow-derived columns entirely rather than emitting all-NaN features
+    # that would make every row fail the caller's dropna().
+    has_flow = "Flow" in history_df.columns and history_df["Flow"].notna().any()
+
     features = pd.DataFrame(index=history_df.index)
     for lag in LAG_HOURS:
         features[f"gage_lag_{lag}"] = history_df["Gage"].shift(lag)
-        features[f"flow_lag_{lag}"] = history_df["Flow"].shift(lag)
+        if has_flow:
+            features[f"flow_lag_{lag}"] = history_df["Flow"].shift(lag)
         features[f"gage_roc_lag_{lag}"] = history_df["Gage_rate_of_change"].shift(lag)
-        features[f"flow_roc_lag_{lag}"] = history_df["Flow_rate_of_change"].shift(lag)
+        if has_flow:
+            features[f"flow_roc_lag_{lag}"] = history_df["Flow_rate_of_change"].shift(lag)
     return features
 
 

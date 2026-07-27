@@ -1,0 +1,12 @@
+# Everything needed to run auto_pipeline.py (and train.py / evaluate_fixed.py /
+# tuning.py / charts.py) standalone, outside the microservice. There was no
+# requirements file for this directory before -- these scripts previously
+# assumed an ambient environment with these already installed.
+xgboost>=2.0
+scikit-learn>=1.3
+pandas>=2.0
+numpy>=1.24
+matplotlib>=3.7
+openmeteo_requests>=1.3
+requests-cache>=1.1
+retry-requests>=2.0

@@ -1,0 +1,7 @@
+engine,horizon_hours,mae_ft,ci80_coverage,ci80_nominal
+xgboost_conformal,1,0.0077,1.0,0.8
+xgboost_conformal,3,0.0124,1.0,0.8
+xgboost_conformal,6,0.0265,0.971,0.8
+xgboost_conformal_tuned,1,0.0117,0.976,0.8
+xgboost_conformal_tuned,3,0.0125,0.908,0.8
+xgboost_conformal_tuned,6,0.0213,0.99,0.8

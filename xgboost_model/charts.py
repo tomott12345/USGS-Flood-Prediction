@@ -87,7 +87,7 @@ def plot_forecast_band(site_code, horizon_hours, days=45, save_path=None):
 
     ax.set_ylabel("Gage height (ft)", color=COLOR_INK_SECONDARY, fontsize=10)
     ax.set_title(
-        f"Pompton River (site {site_code}) — {horizon_hours}h-ahead forecast, held-out test period\n"
+        f"USGS site {site_code} — {horizon_hours}h-ahead forecast, held-out test period\n"
         f"MAE {result['mae_ft']:.3f} ft · NSE {result['nse']:.2f} · "
         f"CI coverage {result['ci80_coverage']:.0%} (nominal {result['ci80_nominal']:.0%})",
         color=COLOR_INK_PRIMARY, fontsize=11, loc="left",
@@ -151,7 +151,7 @@ def plot_forecast_lead_time(site_code, horizon_hours, days=45, save_path=None):
 
     ax.set_ylabel("Gage height (ft)", color=COLOR_INK_SECONDARY, fontsize=10)
     ax.set_title(
-        f"Pompton River (site {site_code}) — {horizon_hours}h-ahead forecast, aligned by issue time\n"
+        f"USGS site {site_code} — {horizon_hours}h-ahead forecast, aligned by issue time\n"
         f"a real early-warning signal would show the orange line rising {horizon_hours}h left of the black line",
         color=COLOR_INK_PRIMARY, fontsize=11, loc="left",
     )
@@ -268,38 +268,62 @@ def plot_error_by_horizon(results_df, save_path=None):
 
 
 if __name__ == "__main__":
+    import sys
+
     os.makedirs(CHARTS_DIR, exist_ok=True)
-    site_code = "01388500"
+    site_code = sys.argv[1] if len(sys.argv) > 1 else "01388500"
+    # Pompton (01388500) is the only site with pre-recorded AutoGluon/naive-
+    # quantile comparison CSVs checked into evaluation/ -- the cross-engine
+    # comparison section below only makes sense for that site. Every other
+    # site still gets the per-horizon forecast/lead-time charts and a
+    # conformal-vs-tuned comparison (both computed live, so they work for
+    # any site), just not the historical AutoGluon comparison.
+    is_default_site = site_code == "01388500"
+    # Namespace output files by site so charting a new site never overwrites
+    # another site's saved charts/CSVs.
+    prefix = "" if is_default_site else f"{site_code}_"
 
     # <=6h only: NSE goes negative (worse than predicting the mean) at 12h+
     # for every engine tried, regardless of feature set or tuning -- see
     # README.md. Not worth charting a horizon nothing can forecast well.
     HORIZONS = [1, 3, 6]
 
-    print("Rendering forecast-with-band charts...")
+    print(f"Rendering forecast-with-band charts for {site_code}...")
     for horizon in HORIZONS:
-        path = plot_forecast_band(site_code, horizon, save_path=os.path.join(CHARTS_DIR, f"forecast_h{horizon}.png"))
+        path = plot_forecast_band(
+            site_code, horizon, save_path=os.path.join(CHARTS_DIR, f"{prefix}forecast_h{horizon}.png"),
+        )
         print(f"  saved {path}")
 
     print("Rendering issue-time-aligned lead-time charts...")
     for horizon in HORIZONS:
-        path = plot_forecast_lead_time(site_code, horizon, save_path=os.path.join(CHARTS_DIR, f"lead_time_h{horizon}.png"))
+        path = plot_forecast_lead_time(
+            site_code, horizon, save_path=os.path.join(CHARTS_DIR, f"{prefix}lead_time_h{horizon}.png"),
+        )
         print(f"  saved {path}")
 
-    print("\nAssembling cross-engine comparison table...")
-    autogluon_df = pd.read_csv(os.path.join("..", "evaluation", "backtest_results.csv"))
-    autogluon_df = autogluon_df[autogluon_df["label"].str.startswith("pompton_h")].copy()
-    autogluon_df["engine"] = "autogluon"
+    print("\nAssembling comparison table...")
+    frames = []
 
-    naive_xgb_df = pd.read_csv(os.path.join("..", "evaluation", "xgboost_vs_autogluon_pompton.csv"))
-    naive_xgb_df = naive_xgb_df[naive_xgb_df["engine"] == "xgboost"].copy()
-    naive_xgb_df["engine"] = "xgboost_naive_quantile"
+    if is_default_site:
+        autogluon_df = pd.read_csv(os.path.join("..", "evaluation", "backtest_results.csv"))
+        autogluon_df = autogluon_df[autogluon_df["label"].str.startswith("pompton_h")].copy()
+        autogluon_df["engine"] = "autogluon"
+        frames.append(autogluon_df[["engine", "horizon_hours", "mae_ft", "ci80_coverage", "ci80_nominal"]])
+
+        naive_xgb_df = pd.read_csv(os.path.join("..", "evaluation", "xgboost_vs_autogluon_pompton.csv"))
+        naive_xgb_df = naive_xgb_df[naive_xgb_df["engine"] == "xgboost"].copy()
+        naive_xgb_df["engine"] = "xgboost_naive_quantile"
+        frames.append(naive_xgb_df[["engine", "horizon_hours", "mae_ft", "ci80_coverage", "ci80_nominal"]])
 
     # Baseline features (own-site lags only) with conformal calibration --
-    # the main deliverable before the upstream+weather experiment.
+    # the main deliverable before the upstream+weather experiment. Computed
+    # live, so this works for any site.
     conformal_results = [evaluate_fixed_model(site_code, h, days=45) for h in HORIZONS]
     conformal_df = pd.DataFrame([r for r in conformal_results if r["status"] == "ok"])
-    conformal_df["engine"] = "xgboost_conformal"
+    if not conformal_df.empty:
+        conformal_df["engine"] = "xgboost_conformal"
+        frames.append(conformal_df[["engine", "horizon_hours", "mae_ft", "ci80_coverage", "ci80_nominal"]])
 
     # Enriched features (upstream gages + weather) *with* regularization/
     # feature-count tuning -- the untuned enriched variant is deliberately
@@ -308,14 +332,11 @@ if __name__ == "__main__":
     # comparison without changing the conclusion.
     tuned_results = [evaluate_fixed_model(site_code, h, days=45, feature_set="enriched", tune=True) for h in HORIZONS]
     tuned_df = pd.DataFrame([r for r in tuned_results if r["status"] == "ok"])
-    tuned_df["engine"] = "xgboost_conformal_tuned"
+    if not tuned_df.empty:
+        tuned_df["engine"] = "xgboost_conformal_tuned"
+        frames.append(tuned_df[["engine", "horizon_hours", "mae_ft", "ci80_coverage", "ci80_nominal"]])
 
-    combined = pd.concat([
-        autogluon_df[["engine", "horizon_hours", "mae_ft", "ci80_coverage", "ci80_nominal"]],
-        naive_xgb_df[["engine", "horizon_hours", "mae_ft", "ci80_coverage", "ci80_nominal"]],
-        conformal_df[["engine", "horizon_hours", "mae_ft", "ci80_coverage", "ci80_nominal"]],
-        tuned_df[["engine", "horizon_hours", "mae_ft", "ci80_coverage", "ci80_nominal"]],
-    ], ignore_index=True)
+    combined = pd.concat(frames, ignore_index=True)
     # Drop rows where the model failed to load/predict (e.g. AutoGluon's
     # broken h48) -- they carry NaN horizon_hours, which otherwise sorts into
     # its own bogus "nanh" tick on the x-axis. Also restrict AutoGluon/naive-
@@ -324,10 +345,10 @@ if __name__ == "__main__":
     combined = combined.dropna(subset=["horizon_hours"])
     combined["horizon_hours"] = combined["horizon_hours"].astype(int)
     combined = combined[combined["horizon_hours"].isin(HORIZONS)]
-    combined.to_csv(os.path.join(CHARTS_DIR, "combined_comparison.csv"), index=False)
+    combined.to_csv(os.path.join(CHARTS_DIR, f"{prefix}combined_comparison.csv"), index=False)
 
     print("Rendering comparison charts...")
-    path = plot_calibration_reliability(combined, save_path=os.path.join(CHARTS_DIR, "calibration_reliability.png"))
+    path = plot_calibration_reliability(combined, save_path=os.path.join(CHARTS_DIR, f"{prefix}calibration_reliability.png"))
     print(f"  saved {path}")
-    path = plot_error_by_horizon(combined, save_path=os.path.join(CHARTS_DIR, "error_by_horizon.png"))
+    path = plot_error_by_horizon(combined, save_path=os.path.join(CHARTS_DIR, f"{prefix}error_by_horizon.png"))
     print(f"  saved {path}")

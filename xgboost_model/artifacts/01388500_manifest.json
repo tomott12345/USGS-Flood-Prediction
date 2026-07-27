@@ -1,0 +1,44 @@
+{
+  "site_code": "01388500",
+  "trained_at": "2026-07-27T14:11:21.923574+00:00",
+  "upstream_site_codes": [
+    "01386000",
+    "01387000",
+    "01387905",
+    "01387998",
+    "01388000"
+  ],
+  "training_days": 60,
+  "horizons": {
+    "1": {
+      "status": "ok",
+      "feature_set": "baseline",
+      "model_dir": "01388500_h1",
+      "selection": {
+        "baseline_mae_ft": 0.0278,
+        "enriched_tuned_mae_ft": 0.0312
+      },
+      "conformal_margin_ft": 0.02496419906616243
+    },
+    "3": {
+      "status": "ok",
+      "feature_set": "baseline",
+      "model_dir": "01388500_h3",
+      "selection": {
+        "baseline_mae_ft": 0.0391,
+        "enriched_tuned_mae_ft": 0.0561
+      },
+      "conformal_margin_ft": 0.040850372314453764
+    },
+    "6": {
+      "status": "ok",
+      "feature_set": "baseline",
+      "model_dir": "01388500_h6",
+      "selection": {
+        "baseline_mae_ft": 0.0624,
+        "enriched_tuned_mae_ft": 0.0807
+      },
+      "conformal_margin_ft": 0.07480484008789023
+    }
+  }
+}

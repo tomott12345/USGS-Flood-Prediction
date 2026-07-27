@@ -1,6 +1,11 @@
 {
+  "engine": "xgboost",
+  "format": "xgboost_native_json",
   "site_code": "01388500",
   "horizon_hours": 3,
+  "feature_set": "baseline",
+  "tuned": false,
+  "tuned_params": null,
   "feature_columns": [
     "gage_lag_1",
     "flow_lag_1",
@@ -27,10 +32,15 @@
     "gage_roc_lag_24",
     "flow_roc_lag_24"
   ],
-  "conformal_margin": 0.035406455993652663,
+  "upstream_site_codes": [],
+  "conformal_margin": 0.040850372314453764,
   "alpha": 0.2,
   "nominal_coverage": 0.8,
   "n_fit_rows": 1128,
   "n_calibration_rows": 283,
-  "trained_at": "2026-07-22T19:08:49.067074+00:00"
+  "training_days": 60,
+  "trained_at": "2026-07-27T14:12:13.768860+00:00",
+  "xgboost_version": "3.2.0",
+  "sklearn_version": "1.7.2",
+  "python_version": "3.10.12"
 }
