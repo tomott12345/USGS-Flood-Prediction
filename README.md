@@ -137,10 +137,19 @@ This image is not optimized for size (it installs the same AutoGluon+torch depen
 
 ## Continuous integration
 
-Three GitHub Actions workflows run on every push to `main` and every pull request (`.github/workflows/`):
+Four GitHub Actions workflows run on every push to `main` and every pull request (`.github/workflows/`):
 
 | Workflow | What it checks |
 |---|---|
 | `microservice-tests.yml` | Installs `microservice/requirements.txt` under Python 3.11 and runs the pytest suite (`microservice/tests/`) -- covers the AutoGluon route's data parsing/staleness handling and the XGBoost route's serving logic, both against mocked USGS/network calls. |
 | `webapp-tests.yml` | `gofmt`, `go vet`, `go build`, and `go test ./... -race` for `webapp/` -- covers input validation, manifest parsing, the microservice HTTP client, job subscribe/replay semantics, and subprocess line-buffering, entirely offline. |
 | `docker-build.yml` | Builds the repo-root `Dockerfile`, starts the resulting image, and smoke-tests both services inside it -- the webapp's `/health` route, and the microservice's `/predict/xgboost/01388500/1` route against the models already committed under `xgboost_model/artifacts/`. A green run means the image doesn't just build, it actually serves a real prediction. |
+| `auto-pipeline-tests.yml` | Runs `python xgboost_model/auto_pipeline.py 01388500` for real -- unlike the other three workflows, this one makes live calls to USGS/NLDI/OpenMeteo rather than mocking them, then verifies the manifest reports a successfully trained horizon and that its model/metadata files were actually written. Because it depends on external services, it's the one workflow here that can fail for reasons outside this repo's control; see the workflow file's own header comment before assuming a failure is a real regression. |
+
+## Troubleshooting
+
+A few gotchas that have come up running this repo locally, in case you hit the same thing:
+
+- **`docker build` says `Dockerfile: no such file or directory`.** The `Dockerfile` lives at the repo root, not inside `webapp/`. If you `cd`'d into `webapp/` to run `go run .` earlier in the same session, `cd ..` back to the repo root before `docker build -t usgs-flood-webapp .`.
+- **`webapp`'s `/train` page fails with `ModuleNotFoundError: No module named 'sklearn'` (or similar) when run outside Docker.** `go run .`/the compiled `webapp-server` binary shells out to whatever Python `PYTHON_BIN` points to (default: `python3` on `PATH`) -- it doesn't install anything for you. Create a venv and `pip install -r microservice/requirements.txt` into it, then point `PYTHON_BIN` at that venv's `python3` (e.g. `PYTHON_BIN=$(pwd)/.venv/bin/python3 go run ./webapp`) rather than relying on an ambient system Python.
+- **A `/predict` or `/verify` call fails with a "stale data" 503 even though USGS shows current readings.** Both prediction routes compare the current time against USGS's station-local (US Eastern) timestamps using a timezone-naive clock check, so this only works correctly if the machine's own clock is set to US Eastern. The Docker image sets this for you (`ENV TZ=America/New_York` in the `Dockerfile`); running `uvicorn app:app` directly on a non-Eastern host will need the same fix. See `microservice/readme.md`'s "Known limitation" section for the full explanation.

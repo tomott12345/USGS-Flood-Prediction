@@ -75,6 +75,10 @@ func main() {
 	}
 }
 
+// routes registers every handler on the Go 1.22+ ServeMux, which supports
+// method-qualified and wildcard patterns natively ("GET /jobs/{id}" only
+// matches GET, and {id} is available via r.PathValue("id") in the handler)
+// -- this is why the module requires go 1.22 and pulls in no router library.
 func (a *App) routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /{$}", a.handleDashboard)
 	mux.HandleFunc("GET /train", a.handleTrainForm)
@@ -169,7 +173,7 @@ func (a *App) handleAPITrain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	days := 60
+	days := 60 // mirrors auto_pipeline.py's own DEFAULT_TRAIN_DAYS, used whenever the form leaves this blank
 	if v := r.FormValue("days"); v != "" {
 		parsed, err := strconv.Atoi(v)
 		if err != nil {

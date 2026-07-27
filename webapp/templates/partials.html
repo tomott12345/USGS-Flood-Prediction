@@ -1,3 +1,20 @@
+{{/*
+  Shared fragments included by every page template in this directory.
+
+  html/template's defined blocks share one flat, package-wide namespace --
+  ALL *.html files here are parsed into a single *template.Template in
+  main.go (template.New("").ParseFS(templateFS, "templates/*.html")), so two
+  files that both did {{define "content"}}...{{end}} would silently clobber
+  each other. The convention that avoids this: every *page* template below
+  defines itself under its own filename (e.g. index.html does
+  {{define "index.html"}}...{{end}}, and main.go renders it via
+  a.tmpl.ExecuteTemplate(w, "index.html", data)), so page names can never
+  collide with each other. Only small, genuinely shared, self-contained
+  fragments -- like the three defined here -- get a short generic name, and
+  each such name must be defined exactly once across every file in this
+  directory.
+*/}}
+
 {{define "head"}}
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">

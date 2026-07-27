@@ -31,6 +31,11 @@ def _chronological_fit_calibration_split(X, y, calibration_fraction=0.2):
 
 
 def train_model(X_fit, y_fit, **xgb_kwargs):
+    """Fit a single XGBRegressor point-forecast model. xgb_kwargs overrides
+    any of this function's own defaults, so callers with a larger/richer
+    feature set (e.g. tuning.py's search) can supply their own regularization
+    without needing a second training function.
+    """
     # Deliberately modest defaults (shallow trees, low learning rate) given
     # how few rows are actually available (a few hundred to ~1500) -- see
     # tuning.py for a proper regularization search used on the larger
@@ -43,6 +48,13 @@ def train_model(X_fit, y_fit, **xgb_kwargs):
 
 
 def train_site_horizon(site_code, horizon_hours, history_df=None, days=60, alpha=0.2, calibration_fraction=0.2):
+    """End-to-end for one (site, horizon) pair: fetch history (unless
+    already supplied, so __main__ below can fetch once and reuse it across
+    horizons), build baseline lag features, fit, calibrate a conformal
+    margin, and save model.json + metadata.json under artifacts/. This is
+    the plain-baseline building block auto_pipeline.py's own
+    train_final_model wraps with feature-set auto-selection on top.
+    """
     if history_df is None:
         history_df = fetch_site_history(site_code, days=days)
 

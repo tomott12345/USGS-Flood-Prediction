@@ -3,6 +3,12 @@
 // fetch, template literals) has been in every evergreen browser for years,
 // so there is nothing here to vendor or keep in sync with a build step.
 
+// wireTrainForm intercepts the /train page's form submit and posts it as
+// multipart/form-data via fetch(FormData) instead of letting the browser do
+// a normal navigation-based submit. This is why the server side
+// (webapp/main.go's handleAPITrain) must parse the body with
+// ParseMultipartForm rather than ParseForm -- a plain url-encoded parser
+// would silently read every field as empty.
 function wireTrainForm() {
   var form = document.getElementById("train-form");
   var errorEl = document.getElementById("train-error");
@@ -32,6 +38,11 @@ function wireTrainForm() {
   });
 }
 
+// watchJob opens the job's Server-Sent Events stream (webapp/main.go's
+// handleJobStream) and keeps the page live: every "log" event is appended to
+// the on-page console, and the terminal "status" event closes the connection
+// and either shows the error or fetches and renders the trained site's
+// results in place, with no full page reload either way.
 function watchJob(jobId, siteCode) {
   var logEl = document.getElementById("log");
   var badgeEl = document.getElementById("status-badge");
@@ -90,6 +101,12 @@ function fetchSiteSummary(siteCode) {
   });
 }
 
+// renderSiteResultsHTML builds the same "per-horizon table + chart gallery"
+// view as webapp/templates/site.html, but as an HTML string for injection
+// into job.html's results panel right after training finishes -- so a user
+// watching a job doesn't have to navigate away to /sites/{site} to see what
+// just got trained. Every value interpolated from the manifest that could
+// contain user- or site-derived text goes through escapeHTML first.
 function renderSiteResultsHTML(siteCode, summary) {
   var manifest = summary.manifest;
   var chartFiles = summary.chart_files || [];
@@ -150,6 +167,11 @@ function renderSiteResultsHTML(siteCode, summary) {
   );
 }
 
+// wireVerifyButtons hooks up every "Verify" button under scopeEl (the
+// results panel this session just rendered) to call POST
+// /api/sites/{site}/verify?horizon=N -- the "prove it's deployed" step,
+// which asks the microservice to actually score the newly trained model
+// against live USGS data rather than just checking that a file exists.
 function wireVerifyButtons(scopeEl) {
   var buttons = scopeEl.querySelectorAll(".verify-btn");
   buttons.forEach(function (btn) {
@@ -189,6 +211,10 @@ function wireVerifyButtons(scopeEl) {
   });
 }
 
+// escapeHTML neutralizes s for safe insertion into an HTML string by
+// round-tripping it through the DOM's own text encoder (assigning to
+// textContent then reading innerHTML) rather than a hand-rolled replace
+// chain, so it can't miss a character class a manual implementation would.
 function escapeHTML(s) {
   var div = document.createElement("div");
   div.textContent = s;
