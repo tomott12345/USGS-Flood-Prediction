@@ -1,0 +1,19 @@
+site_code,horizon_hours,feature_set,tuned,status,n_features,n_train,n_calib,n_test,mae_ft,rmse_ft,nse,margin_ft,ci80_coverage,ci80_nominal,tuned_params
+01388500,1,baseline,False,ok,24,631,211,211,0.0295,0.0756,0.9722,0.2256,0.986,0.8,
+01388500,1,enriched,False,ok,50,631,211,211,0.0569,0.1625,0.8712,0.2753,0.981,0.8,
+01388500,1,enriched,True,ok,16,631,211,211,0.0553,0.1032,0.9481,0.2126,0.967,0.8,"{'max_depth': 4, 'reg_lambda': 20, 'reg_alpha': 0, 'min_child_weight': 5, 'subsample': 0.7, 'colsample_bytree': 0.6}"
+01388500,3,baseline,False,ok,24,630,210,211,0.0447,0.1251,0.9236,0.3109,0.981,0.8,
+01388500,3,enriched,False,ok,50,630,210,211,0.1063,0.2333,0.7344,0.5043,0.972,0.8,
+01388500,3,enriched,True,ok,16,630,210,211,0.0717,0.1456,0.8965,0.4524,0.972,0.8,"{'max_depth': 2, 'reg_lambda': 20, 'reg_alpha': 5, 'min_child_weight': 10, 'subsample': 1.0, 'colsample_bytree': 0.6}"
+01388500,6,baseline,False,ok,24,628,210,210,0.0761,0.2116,0.7826,0.3664,0.967,0.8,
+01388500,6,enriched,False,ok,50,628,210,210,0.1726,0.3058,0.5458,0.484,0.957,0.8,
+01388500,6,enriched,True,ok,20,628,210,210,0.1116,0.2307,0.7414,0.4291,0.948,0.8,"{'max_depth': 2, 'reg_lambda': 20, 'reg_alpha': 1, 'min_child_weight': 10, 'subsample': 1.0, 'colsample_bytree': 0.8}"
+01388500,12,baseline,False,ok,24,625,208,209,0.1338,0.3368,0.4515,0.631,0.943,0.8,
+01388500,12,enriched,False,ok,50,625,208,209,0.1449,0.342,0.4345,0.5699,0.933,0.8,
+01388500,12,enriched,True,ok,20,625,208,209,0.1887,0.3555,0.389,0.7102,0.943,0.8,"{'max_depth': 2, 'reg_lambda': 20, 'reg_alpha': 5, 'min_child_weight': 1, 'subsample': 0.7, 'colsample_bytree': 0.6}"
+01388500,24,baseline,False,ok,24,618,206,206,0.2417,0.498,-0.1828,0.8672,0.888,0.8,
+01388500,24,enriched,False,ok,50,618,206,206,0.2611,0.5133,-0.2566,1.1505,0.903,0.8,
+01388500,24,enriched,True,ok,20,618,206,206,0.2715,0.4966,-0.176,1.2328,0.903,0.8,"{'max_depth': 2, 'reg_lambda': 20, 'reg_alpha': 5, 'min_child_weight': 1, 'subsample': 0.7, 'colsample_bytree': 0.6}"
+01388500,48,baseline,False,ok,24,603,201,202,0.266,0.5367,-0.3489,1.4027,0.916,0.8,
+01388500,48,enriched,False,ok,50,603,201,202,0.3065,0.5474,-0.4032,1.468,0.931,0.8,
+01388500,48,enriched,True,ok,30,603,201,202,0.3865,0.5999,-0.6851,1.4728,0.95,0.8,"{'max_depth': 2, 'reg_lambda': 20, 'reg_alpha': 5, 'min_child_weight': 1, 'subsample': 0.7, 'colsample_bytree': 0.6}"

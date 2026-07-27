@@ -4,28 +4,42 @@ import numpy as np
 import psutil
 from datetime import datetime, timedelta
 import os
+import logging
+import traceback
 from autogluon.timeseries import TimeSeriesPredictor, TimeSeriesDataFrame
 import pickle
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
 app = FastAPI()
 
-model_directory = "../models"
+model_directory = os.environ.get("MODEL_DIRECTORY", "../models")
+
+# USGS qualification codes that mean the reading itself shouldn't be trusted
+# (as opposed to "P"/"A"/"e" which just mean provisional/approved/estimated).
+# Deliberately does NOT include any check on the magnitude of a reading or its
+# rate of change -- a fast-rising gage is the exact signal this service exists
+# to catch, so a generic "reject big jumps" rule would suppress real flood events.
+BAD_QUALITY_CODES = {"ice", "eqp", "mnt", "dis", "bkw", "rat"}
+
+STALE_DATA_THRESHOLD_HOURS = 3
 
 def log_system_usage(stage=""):
     cpu_percent = psutil.cpu_percent(interval=None)
     memory_info = psutil.virtual_memory()
-    total_memory_mb = memory_info.total / (1024 ** 2)  
-    available_memory_mb = memory_info.available / (1024 ** 2)  
-    used_memory_mb = memory_info.used / (1024 ** 2)  
+    total_memory_mb = memory_info.total / (1024 ** 2)
+    available_memory_mb = memory_info.available / (1024 ** 2)
+    used_memory_mb = memory_info.used / (1024 ** 2)
 
     process = psutil.Process()
-    process_memory_mb = process.memory_info().rss / (1024 ** 2)  
+    process_memory_mb = process.memory_info().rss / (1024 ** 2)
 
-    print(f"[{stage}] CPU Usage: {cpu_percent}%")
-    print(f"[{stage}] Total System Memory: {total_memory_mb:.2f} MB")
-    print(f"[{stage}] Available Memory: {available_memory_mb:.2f} MB")
-    print(f"[{stage}] System Used Memory: {used_memory_mb:.2f} MB")
-    print(f"[{stage}] Process Memory Usage: {process_memory_mb:.2f} MB")
+    logger.info(
+        f"[{stage}] CPU: {cpu_percent}% | "
+        f"System memory total/available/used: {total_memory_mb:.2f}/{available_memory_mb:.2f}/{used_memory_mb:.2f} MB | "
+        f"Process memory: {process_memory_mb:.2f} MB"
+    )
 
 def fetch_data_dynamically(url, column_suffix, skip_options=range(24, 30)):
     for skip in skip_options:
@@ -35,15 +49,30 @@ def fetch_data_dynamically(url, column_suffix, skip_options=range(24, 30)):
             measurement_col = [col for col in data.columns if col.endswith(column_suffix)]
             if not measurement_col:
                 raise ValueError(f"No column ending with {column_suffix} found.")
-            data[measurement_col[0]] = pd.to_numeric(data[measurement_col[0]], errors='coerce')
-            data = data.dropna(subset=['datetime', measurement_col[0]])
-            data = data[['datetime', measurement_col[0]]].set_index('datetime')
+            measurement_col = measurement_col[0]
+
+            quality_col = f"{measurement_col}_cd"
+            if quality_col in data.columns:
+                quality_values = data[quality_col].astype(str).str.strip().str.lower()
+                bad_quality_mask = quality_values.str.contains(
+                    "|".join(BAD_QUALITY_CODES), regex=True, na=False
+                )
+                if bad_quality_mask.any():
+                    logger.warning(
+                        f"Dropping {bad_quality_mask.sum()} row(s) from {url} flagged with "
+                        f"quality codes {sorted(data.loc[bad_quality_mask, quality_col].astype(str).str.strip().unique())}."
+                    )
+                    data = data[~bad_quality_mask]
+
+            data[measurement_col] = pd.to_numeric(data[measurement_col], errors='coerce')
+            data = data.dropna(subset=['datetime', measurement_col])
+            data = data[['datetime', measurement_col]].set_index('datetime')
             data.index = pd.to_datetime(data.index, errors='coerce')
             if data.index.isnull().any():
                 raise ValueError("Datetime conversion failed.")
-            return data, measurement_col[0]
+            return data, measurement_col
         except (ValueError, KeyError, IndexError, pd.errors.ParserError) as e:
-            print(f"Failed with skiprows={skip} for {url}: {e}")
+            logger.warning(f"Failed with skiprows={skip} for {url}: {e}")
     raise ValueError(f"Failed to load data from {url} with any specified skiprows option.")
 
 def fetch_latest_data(site_code, days=1):
@@ -63,6 +92,21 @@ def fetch_latest_data(site_code, days=1):
 
     df = pd.merge(gage_data, flow_data, how='inner', left_index=True, right_index=True)
     df.columns = ['Gage', 'Flow']
+
+    if df.empty:
+        raise HTTPException(status_code=503, detail=f"No usable gage/flow readings found for site {site_code}.")
+
+    latest_reading_age = end_date - df.index.max().to_pydatetime().replace(tzinfo=None)
+    if latest_reading_age > timedelta(hours=STALE_DATA_THRESHOLD_HOURS):
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                f"Latest reading for site {site_code} is {latest_reading_age} old, "
+                f"exceeding the {STALE_DATA_THRESHOLD_HOURS}h staleness threshold. "
+                "Refusing to predict on stale data."
+            ),
+        )
+
     df_resampled = df.resample('H').last()
     df_resampled['Gage_rate_of_change'] = df_resampled['Gage'].diff()
     df_resampled['Flow_rate_of_change'] = df_resampled['Flow'].diff()
@@ -149,6 +193,6 @@ async def predict(site_code: str, forecast_length: int):
 
     except HTTPException as http_err:
         raise http_err
-    except Exception as e:
-        print(f"Unexpected server error: {e}")
+    except Exception:
+        logger.error(f"Unexpected error predicting for site_code={site_code}, forecast_length={forecast_length}:\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="An unexpected error occurred.")

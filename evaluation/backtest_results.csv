@@ -1,0 +1,10 @@
+site_code,label,status,horizon_hours,n_folds,mae_ft,rmse_ft,nse,ci80_coverage,ci80_nominal
+01388500,production_h1,no_valid_folds,1.0,,,,,,
+01388500,pompton_h1,ok,1.0,10.0,0.011,0.0152,0.9898,0.9,0.8
+01388500,pompton_h3,ok,3.0,10.0,0.0185,0.0199,0.9806,1.0,0.8
+01388500,pompton_h6,ok,6.0,10.0,0.018,0.0215,0.976,0.9,0.8
+01388500,pompton_h12,ok,12.0,10.0,0.048,0.0547,0.7886,0.7,0.8
+01388500,pompton_h24,ok,24.0,10.0,0.1828,0.427,-0.2294,0.7,0.8
+01388500,pompton_h48,load_failed: AttributeError: Can't get attribute 'TimeSeriesTrainer' on <module 'autogluon.timeseries.trainer' from '/Users/tott/anaconda3/lib/python3.11/site-packages/autogluon/timeseries/trainer/__init__.py'>,,,,,,,
+01473730,schuylkill_h6,ok,6.0,10.0,0.051,0.0833,0.9169,1.0,0.8
+08393610,rio_hondo_h6,ok,6.0,10.0,0.0206,0.0261,-0.6256,0.9,0.8
