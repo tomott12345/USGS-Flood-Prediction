@@ -9,6 +9,8 @@ import traceback
 from autogluon.timeseries import TimeSeriesPredictor, TimeSeriesDataFrame
 import pickle
 
+import xgboost_engine
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
@@ -196,3 +198,41 @@ async def predict(site_code: str, forecast_length: int):
     except Exception:
         logger.error(f"Unexpected error predicting for site_code={site_code}, forecast_length={forecast_length}:\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="An unexpected error occurred.")
+
+
+@app.get("/predict/xgboost/{site_code}/{forecast_length}")
+async def predict_xgboost(site_code: str, forecast_length: int):
+    """Additive engine, separate from the AutoGluon /predict route above:
+    serves models trained by xgboost_model/auto_pipeline.py and saved to
+    xgboost_model/artifacts/ in XGBoost's native JSON format. Does not read
+    or write anything the AutoGluon route touches.
+    """
+    try:
+        log_system_usage("Start (xgboost)")
+        result = xgboost_engine.predict(site_code, forecast_length)
+        log_system_usage("After Prediction (xgboost)")
+        return result
+    except xgboost_engine.XGBoostModelError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
+    except Exception:
+        logger.error(
+            f"Unexpected error in xgboost predict for site_code={site_code}, "
+            f"forecast_length={forecast_length}:\n{traceback.format_exc()}"
+        )
+        raise HTTPException(status_code=500, detail="An unexpected error occurred.")
+
+
+@app.get("/models/xgboost/{site_code}")
+async def list_xgboost_models(site_code: str):
+    """What horizons are actually available for a site -- lets a caller (or
+    a human with curl) discover what auto_pipeline.py has trained without
+    guessing forecast_length values against /predict/xgboost/.
+    """
+    horizons = xgboost_engine.available_horizons(site_code)
+    if not horizons:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No XGBoost models found for site={site_code}. "
+                   f"Train some with: python xgboost_model/auto_pipeline.py {site_code}",
+        )
+    return {"site_code": site_code, "available_horizons_hours": horizons}

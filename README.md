@@ -8,3 +8,30 @@ There are two subset folders in this repository. All of them use a combination o
 
 The inspiration for this analysis comes from the paper [Data-Driven Flood Alert System (FAS) Using Extreme Gradient Boosting (XGBoost) to Forecast Flood Stages](https://www.researchgate.net/publication/358910939_Data-Driven_Flood_Alert_System_FAS_Using_Extreme_Gradient_Boosting_XGBoost_to_Forecast_Flood_Stages). 
 
+## Repository layout
+
+- `usgs-streamgage-*/` -- the original per-site notebooks (AutoGluon, XGBoost prototypes, NeuralProphet) that this project started from.
+- `models/` -- the production AutoGluon model(s) served by `microservice/`.
+- `evaluation/` -- offline scripts for checking model accuracy and testing feature ideas (backtesting, precipitation hypothesis testing) against fresh USGS data, without touching production. See `evaluation/README.md`; it also documents the AutoGluon pickle/numba version-mismatch failure that motivated the XGBoost replacement below.
+- `xgboost_model/` -- the XGBoost replacement for AutoGluon: conformal-calibrated point forecasts, upstream-gage and weather enrichment, hyperparameter tuning, and (new) `auto_pipeline.py`, a single command that trains and exports a deployable model for any USGS streamgage. See `xgboost_model/README.md` for the full write-up, including why native XGBoost JSON was chosen over AutoGluon's pickle format.
+- `microservice/` -- the FastAPI service. Serves the original AutoGluon models via `/predict/{site_code}/{forecast_length}`, and (new) also serves `auto_pipeline.py`'s XGBoost models via an additive `/predict/xgboost/{site_code}/{forecast_length}` route. See `microservice/readme.md`.
+
+## Training and deploying a new site
+
+Previously, adding a new streamgage meant hand-picking upstream gages and manually comparing feature sets per horizon (see `xgboost_model/README.md`'s "trial and error"). That's now one command:
+
+```
+python xgboost_model/auto_pipeline.py <site_code>
+```
+
+Given a USGS site code (e.g. `01388500`), this discovers genuinely upstream gages (crossing tributary boundaries, via USGS's NLDI navigation API), auto-selects between plain lag features and upstream+weather-enriched, tuned features per forecast horizon based on which one actually performs better on held-out data for that site, and saves the winning model per horizon to `xgboost_model/artifacts/{site_code}_h{horizon}/` in XGBoost's native JSON format (portable across library/Python versions, unlike AutoGluon's pickle -- see `evaluation/README.md`). A `{site_code}_manifest.json` records which feature set was chosen per horizon and why.
+
+Once trained, the model is immediately servable:
+
+```
+curl "http://localhost:8000/predict/xgboost/01388500/1"
+curl "http://localhost:8000/models/xgboost/01388500"   # what horizons are trained
+```
+
+This has been run end-to-end against the Pompton River (01388500) and the Susquehanna River above the dam at Sunbury, PA (01553990) -- the latter also surfaced and fixed a real gap where sites that never report discharge (impoundment/dam gages) previously failed outright instead of falling back to gage-height-only features.
+

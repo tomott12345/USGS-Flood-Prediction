@@ -1,0 +1,36 @@
+name: Microservice tests
+
+# Runs the pytest suite in microservice/tests/ automatically on every push
+# and PR, so "does this break the service" is answered by CI rather than a
+# manual checklist item. Deliberately scoped to this one suite: it's fully
+# offline (USGS/OpenMeteo calls are monkeypatched, see test_app.py and
+# test_xgboost_engine.py), so it's fast and deterministic in CI. Genuinely
+# live checks -- training against real USGS data with auto_pipeline.py,
+# curling a running instance of the service -- depend on external APIs and
+# are better run manually/on a schedule than as a required PR gate; see the
+# note in the PR template if that gets added later.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: microservice
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # requirements.txt pins numpy==2.3.5/scipy==1.16.3/contourpy==1.3.3,
+          # which require Python >=3.11 -- 3.10 fails to resolve them at all.
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run tests
+        run: pytest tests/ -v

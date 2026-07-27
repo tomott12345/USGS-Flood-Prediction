@@ -4,9 +4,12 @@ that module fetches only the *latest* window for live serving; this one
 fetches arbitrary historical windows and skips the staleness check that only
 makes sense for real-time predictions.
 """
+import logging
 from datetime import datetime, timedelta
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 # Same "untrustworthy reading" codes as microservice/app.py -- kept in sync
 # manually since the two modules serve different purposes (live serving vs.
@@ -84,17 +87,34 @@ def fetch_site_history(site_code, days=90):
     Note: USGS's instantaneous-values (iv) service typically only retains
     sub-daily granularity for the last ~120 days; requesting a longer window
     will simply return less data than requested rather than erroring.
+
+    Some real sites (e.g. impoundment/dam gages like 01553990, "Susquehanna
+    River above Dam at Sunbury, PA") only ever report gage height (00065) and
+    have never reported discharge (00060) at all -- not a data gap, a site
+    that structurally doesn't measure flow. Previously this raised and made
+    the site untrainable outright; now it degrades to a gage-height-only
+    history (Flow/Flow_rate_of_change columns present but all-NaN) instead of
+    failing, and features.py's build_features skips flow-derived columns
+    when it detects an all-NaN Flow column.
     """
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days)
 
     gage = fetch_historical_series(site_code, "00065", "_00065", start_date, end_date)
-    flow = fetch_historical_series(site_code, "00060", "_00060", start_date, end_date)
+    try:
+        flow = fetch_historical_series(site_code, "00060", "_00060", start_date, end_date)
+        df = pd.merge(gage, flow, how="inner", left_index=True, right_index=True, suffixes=("_gage", "_flow"))
+        df.columns = ["Gage", "Flow"]
+    except ValueError:
+        logger.warning(f"Site {site_code} has no usable discharge (00060) data -- falling back to gage-height-only history.")
+        df = gage.rename(columns={"value": "Gage"})
+        df["Flow"] = float("nan")
 
-    df = pd.merge(gage, flow, how="inner", left_index=True, right_index=True, suffixes=("_gage", "_flow"))
-    df.columns = ["Gage", "Flow"]
     df_resampled = df.resample("h").last()
     df_resampled["Gage_rate_of_change"] = df_resampled["Gage"].diff()
     df_resampled["Flow_rate_of_change"] = df_resampled["Flow"].diff()
-    df_resampled.dropna(inplace=True)
+    # Only Gage/its rate-of-change are required for every row -- Flow being
+    # entirely absent (see above) shouldn't drop every single row, which a
+    # blanket dropna() would do.
+    df_resampled.dropna(subset=["Gage", "Gage_rate_of_change"], inplace=True)
     return df_resampled
