@@ -1,0 +1,88 @@
+name: Auto-pipeline training test
+
+# Exercises xgboost_model/auto_pipeline.py exactly the way README.md's
+# "Train a model for any streamgage" section tells users to run it:
+#   python auto_pipeline.py <site_code>
+# end to end -- upstream-gage discovery via USGS's NLDI API, history via
+# USGS's IV service, weather enrichment via OpenMeteo, baseline-vs-enriched
+# selection, and a final save_model()/metadata.json artifact.
+#
+# Unlike microservice-tests.yml and webapp-tests.yml (both fully offline,
+# USGS/OpenMeteo calls mocked), this workflow makes real calls to those
+# external APIs, so it's a genuine "does training against a real site still
+# work" check rather than a unit test -- and it's the one workflow here that
+# can fail for reasons outside this repo's control (USGS/NLDI/OpenMeteo
+# downtime or rate limiting, not a code regression). If a run fails, check
+# the logs for an actual traceback before assuming the pipeline broke; a bare
+# timeout or connection error usually just means re-run the job.
+#
+# Scoped to one site (01388500, Pompton Plains -- the same site the Docker
+# smoke test and this repo's docs already exercise) with the CLI's own
+# default horizons/window (1h/3h/6h, 60 days), so this validates the exact
+# command the README documents.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: xgboost_model
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: xgboost_model/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run auto_pipeline.py against a real site (01388500)
+        run: python auto_pipeline.py 01388500
+
+      - name: Verify at least one horizon trained and its model file was saved
+        run: |
+          python - <<'EOF'
+          import json
+          import os
+          import sys
+
+          manifest_path = "artifacts/01388500_manifest.json"
+          with open(manifest_path) as f:
+              manifest = json.load(f)
+
+          print(json.dumps(manifest, indent=2))
+
+          horizons = manifest.get("horizons", {})
+          ok_horizons = {h: v for h, v in horizons.items() if v.get("status") == "ok"}
+          if not ok_horizons:
+              sys.exit(f"no horizon trained successfully -- {json.dumps(horizons)}")
+
+          for h in ok_horizons:
+              model_path = f"artifacts/01388500_h{h}/model.json"
+              metadata_path = f"artifacts/01388500_h{h}/metadata.json"
+              missing = [p for p in (model_path, metadata_path) if not os.path.exists(p)]
+              if missing:
+                  sys.exit(f"manifest reports horizon {h} as ok but missing: {missing}")
+
+          print(f"OK: horizon(s) {sorted(ok_horizons, key=int)} trained and saved successfully")
+          EOF
+
+      - name: Upload trained artifacts for inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: auto-pipeline-01388500-artifacts
+          path: |
+            xgboost_model/artifacts/01388500_manifest.json
+            xgboost_model/artifacts/01388500_h*/
+          if-no-files-found: warn
+          retention-days: 14
