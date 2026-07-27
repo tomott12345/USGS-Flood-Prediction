@@ -47,6 +47,10 @@ ENGINE_LABELS = {
 
 
 def _new_axis(figsize=(9, 5)):
+    """One figure/axis pre-styled with this module's shared color palette
+    (COLOR_SURFACE/COLOR_BASELINE/COLOR_GRIDLINE/COLOR_INK_MUTED) -- every
+    chart function below starts from this so all of them look consistent
+    without repeating the same styling calls in each one."""
     fig, ax = plt.subplots(figsize=figsize)
     fig.patch.set_facecolor(COLOR_SURFACE)
     ax.set_facecolor(COLOR_SURFACE)

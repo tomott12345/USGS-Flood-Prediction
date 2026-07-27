@@ -25,9 +25,22 @@ model_directory = os.environ.get("MODEL_DIRECTORY", "../models")
 # to catch, so a generic "reject big jumps" rule would suppress real flood events.
 BAD_QUALITY_CODES = {"ice", "eqp", "mnt", "dis", "bkw", "rat"}
 
+# Same staleness policy xgboost_engine.py's own _build_live_feature_row uses
+# for the additive XGBoost route below. Both checks compare a naive
+# datetime.now() against USGS's station-local (US Eastern) timestamps, so
+# both only work correctly if the host's own clock is set to US Eastern --
+# see microservice/readme.md's "Known limitation" section. The repo-root
+# Dockerfile sets this for the containerized deployment; a bare
+# `uvicorn app:app` on a non-Eastern host will hit false staleness errors.
 STALE_DATA_THRESHOLD_HOURS = 3
 
 def log_system_usage(stage=""):
+    """Log CPU/memory usage at a named point in a request's lifecycle
+    (called with "Start"/"Before Prediction"/"After Prediction" etc. from
+    the predict routes below) -- diagnostic instrumentation for spotting
+    memory growth or CPU spikes from loading large AutoGluon/XGBoost models,
+    not something either predict route's behavior depends on.
+    """
     cpu_percent = psutil.cpu_percent(interval=None)
     memory_info = psutil.virtual_memory()
     total_memory_mb = memory_info.total / (1024 ** 2)
@@ -44,6 +57,12 @@ def log_system_usage(stage=""):
     )
 
 def fetch_data_dynamically(url, column_suffix, skip_options=range(24, 30)):
+    # USGS's RDB text format prefixes the real header/data rows with a
+    # variable number of "#"-commented metadata lines (site name, agency
+    # boilerplate, etc.) whose exact count isn't guaranteed to stay constant
+    # across sites or over time -- so rather than hard-coding one skiprows
+    # value, this just tries a small range of plausible values and takes the
+    # first one that actually parses into a valid, non-empty column.
     for skip in skip_options:
         try:
             data = pd.read_csv(url, sep='\t', skiprows=skip, comment='#')
@@ -78,6 +97,13 @@ def fetch_data_dynamically(url, column_suffix, skip_options=range(24, 30)):
     raise ValueError(f"Failed to load data from {url} with any specified skiprows option.")
 
 def fetch_latest_data(site_code, days=1):
+    """Fetch and shape a recent window of live gage-height/discharge
+    readings for the AutoGluon /predict route: pulls both parameters over
+    the trailing `days`, merges them on shared timestamps, rejects the
+    request if the newest reading is stale (see STALE_DATA_THRESHOLD_HOURS
+    above), then reshapes into the long/melted item_id-series form
+    TimeSeriesDataFrame.from_data_frame expects below.
+    """
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days)
     start_date_str = start_date.strftime('%Y-%m-%dT%H:%M:%S.000-05:00')
@@ -129,6 +155,13 @@ def fetch_latest_data(site_code, days=1):
     return long_df
 
 def load_model(site_code, forecast_length):
+    # Two on-disk formats are supported because this repo's sites were
+    # trained at different times with different AutoGluon export settings:
+    # a TimeSeriesPredictor.load()-able directory (AutoGluon's own save
+    # format, containing predictor.pkl plus its internal model files) for
+    # some sites, and a single flat pickle file for others. Both are tried
+    # here rather than picking one so existing models on disk keep working
+    # regardless of which way they were originally saved.
     ag_model_dir = os.path.join(model_directory, f"{site_code}_model_{forecast_length}")
     pickle_model_path = os.path.join(model_directory, f"{site_code}_model_{forecast_length}.pkl")
 
@@ -173,7 +206,12 @@ async def predict(site_code: str, forecast_length: int):
 
         #print("Gage Prediction DataFrame:", gage_pred_df)
         
-        # Extract the mean, lower, and upper bounds specifically for 'gage'
+        # Extract the mean, lower, and upper bounds specifically for 'gage'.
+        # "0.1"/"0.9" are the quantile levels this AutoGluon model was
+        # trained to predict (an 80% interval), named as columns in its
+        # output -- the positional iloc fallback below covers older saved
+        # models whose predict() output didn't include named quantile
+        # columns at all, only positional mean/lower/upper columns.
         if 'mean' in gage_pred_df.columns:
             pred_mean = gage_pred_df["mean"].values[-1]
             lower_bound = gage_pred_df["0.1"].values[-1]
