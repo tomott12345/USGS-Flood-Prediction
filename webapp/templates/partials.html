@@ -1,0 +1,19 @@
+{{define "head"}}
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/static/css/style.css">
+{{end}}
+
+{{define "nav"}}
+<header class="topbar">
+  <a class="brand" href="/">USGS Flood Forecasting</a>
+  <nav>
+    <a href="/">Dashboard</a>
+    <a href="/train">Train a site</a>
+  </nav>
+</header>
+{{end}}
+
+{{define "status_badge"}}
+<span class="badge badge-{{.}}">{{.}}</span>
+{{end}}

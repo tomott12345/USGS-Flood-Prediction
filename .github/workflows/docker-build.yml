@@ -1,0 +1,67 @@
+name: Docker build
+
+# Builds the repo-root Dockerfile on every push and pull request. This is
+# the thing that actually validates the Dockerfile: it was written and
+# reasoned through carefully (see Dockerfile's own comments) but never run
+# through a real `docker build` before this workflow existed, since no
+# docker binary was available in the environment it was authored in.
+#
+# Goes one step further than just building: starts the built image and
+# smoke-tests both services inside it -- the webapp's /health route, and
+# the microservice's /models/xgboost/01388500 route against the models this
+# repo already has committed under xgboost_model/artifacts/ -- so a green
+# run means the image doesn't just build, it actually serves real
+# predictions end to end.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t usgs-flood-webapp:ci .
+
+      - name: Start container
+        run: |
+          docker run -d --name usgs-flood-webapp-ci \
+            -p 8080:8080 -p 8000:8000 \
+            usgs-flood-webapp:ci
+
+      - name: Wait for both services to come up
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/health > /dev/null && \
+               curl -sf http://localhost:8000/models/xgboost/01388500 > /dev/null; then
+              echo "both services are up"
+              exit 0
+            fi
+            echo "waiting for services... ($i/30)"
+            sleep 5
+          done
+          echo "services never became healthy in time"
+          docker logs usgs-flood-webapp-ci
+          exit 1
+
+      - name: Smoke-test the webapp
+        run: |
+          curl -sf http://localhost:8080/health | tee /dev/stderr | grep -q '"status":"ok"'
+          curl -sf -o /dev/null -w "%{http_code}\n" http://localhost:8080/ | grep -q '^200$'
+          curl -sf -o /dev/null -w "%{http_code}\n" http://localhost:8080/train | grep -q '^200$'
+
+      - name: Smoke-test the microservice's xgboost route (real, committed model)
+        run: |
+          curl -sf http://localhost:8000/models/xgboost/01388500 | tee /dev/stderr | grep -q '"available_horizons_hours"'
+          curl -sf http://localhost:8000/predict/xgboost/01388500/1 | tee /dev/stderr | grep -q '"predicted_gage_height"'
+
+      - name: Container logs (always, for debugging)
+        if: always()
+        run: docker logs usgs-flood-webapp-ci || true
+
+      - name: Stop container
+        if: always()
+        run: docker rm -f usgs-flood-webapp-ci || true
