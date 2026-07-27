@@ -35,3 +35,17 @@ writes anything the other touches. `XGB_ARTIFACTS_DIR` (default
 mirroring `MODEL_DIRECTORY` for the AutoGluon models.
 
 Currently AutoGluon and this additive XGBoost engine are the only model types supported.
+
+## Known limitation: the server's clock must be set to US Eastern time
+
+Both routes' staleness check (`fetch_latest_data` in `app.py`, `_build_live_feature_row`
+in `xgboost_engine.py`) compares `datetime.now()` against the timestamps USGS returns,
+which reflect each site's actual local time (these sites are all NJ/PA, i.e. US Eastern) --
+neither call is timezone-aware. This works as long as the machine running the service has
+its system clock set to US Eastern, and silently breaks otherwise: on a server set to UTC
+(the default for most base Docker images, including `python:3.11-slim`), every live reading
+looks ~4-5 hours old and every `/predict` request fails with a false "stale data" 503, even
+though the underlying USGS data is current. The repo-root `Dockerfile` fixes this for the
+containerized deployment by setting the container's timezone to `America/New_York`; if
+you're running `uvicorn app:app` directly on a host, make sure that host's clock is set the
+same way, or these routes will fail in exactly this way.

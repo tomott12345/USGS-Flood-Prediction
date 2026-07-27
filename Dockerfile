@@ -42,6 +42,27 @@ RUN pip install --no-cache-dir --upgrade pip \
 
 # ---- Stage 3: runtime ------------------------------------------------------
 FROM python:3.11-slim
+
+# The USGS gage-height/discharge staleness check (microservice/app.py's
+# fetch_latest_data and microservice/xgboost_engine.py's
+# _build_live_feature_row) compares datetime.now() against timestamps USGS
+# returns for these sites' actual (US Eastern) local time -- neither call
+# is timezone-aware, so this only works if the machine's own clock is set
+# to US Eastern. python:3.11-slim defaults to UTC, which made every live
+# reading look ~4-5 hours old and every /predict request fail with a false
+# "stale data" 503 (caught by docker-build.yml's smoke test, reproduced
+# locally by comparing TZ=America/New_York vs. TZ=UTC against the same
+# live request). All of this repo's streamgages are in NJ/PA, so matching
+# the container's clock to them is the correct fix here, not a workaround --
+# the underlying naive-datetime assumption is pre-existing in app.py and
+# evaluation/usgs_data.py, not introduced by this Dockerfile.
+ENV TZ=America/New_York
+RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata \
+ && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
+ && echo $TZ > /etc/timezone \
+ && rm -rf /var/lib/apt/lists/*
+
 RUN useradd --create-home --uid 1000 appuser
 
 WORKDIR /app

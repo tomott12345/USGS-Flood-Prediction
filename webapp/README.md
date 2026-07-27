@@ -49,6 +49,13 @@ microservice at `http://localhost:8000` (start it separately: `cd
 Then open `http://localhost:8080`, click "Train a new site," enter a USGS
 site code (e.g. `01388500`), and watch it train live.
 
+If you're running the microservice standalone in dev (not via the
+Dockerfile, which sets this for you) rather than in a container, make sure
+its host's system clock is set to US Eastern time -- see
+`microservice/readme.md`'s "Known limitation" section. Otherwise the
+"Verify" button will fail with a false "stale data" error even though the
+model trained fine.
+
 ### Configuration (all optional — every env var has the default above)
 
 | Env var | Default | Purpose |
