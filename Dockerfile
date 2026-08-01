@@ -70,11 +70,15 @@ COPY --from=python-deps /opt/venv /opt/venv
 COPY --from=go-builder /out/webapp-server /app/webapp-server
 
 # Only what's actually needed at runtime -- not the whole repo (notebooks,
-# .git, other sites' exploratory work).
+# .git, other sites' exploratory work). No `models/` here: the only thing
+# it ever held was the AutoGluon production model, which was removed after
+# confirming it fails to unpickle (see evaluation/README.md) -- the AutoGluon
+# route in microservice/app.py still works fine without the directory
+# present, it just raises the same clean FileNotFoundError it already does
+# for any other missing/unknown model.
 COPY evaluation ./evaluation
 COPY xgboost_model ./xgboost_model
 COPY microservice ./microservice
-COPY models ./models
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 
 RUN chmod +x /app/docker-entrypoint.sh /app/webapp-server \
