@@ -1,0 +1,77 @@
+name: Release
+
+# Builds the same repo-root Dockerfile that docker-build.yml already builds
+# and smoke-tests on every push to main, then publishes it to GitHub
+# Container Registry and creates a GitHub Release -- so "download and run
+# it" for an end user is just:
+#
+#   docker pull ghcr.io/<owner>/usgs-flood-webapp:<tag>
+#   docker run -p 8080:8080 -p 8000:8000 ghcr.io/<owner>/usgs-flood-webapp:<tag>
+#
+# Triggered by pushing a "v*" tag (e.g. `git tag v1.0.0 && git push origin v1.0.0`).
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/usgs-flood-webapp
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+            ${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body: |
+            ## Run it
+
+            ```
+            docker pull ${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+            docker run -p 8080:8080 -p 8000:8000 ${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+            ```
+
+            Then open http://localhost:8080.
+
+            This single image bundles the Go web front end (`webapp/`), the
+            FastAPI XGBoost/AutoGluon scoring microservice (`microservice/`),
+            and the training pipeline (`xgboost_model/`) -- there's nothing
+            else to install. Built from the same Dockerfile that
+            [docker-build.yml](../../.github/workflows/docker-build.yml)
+            builds and smoke-tests (real end-to-end predictions, not just a
+            successful build) on every push to `main`.
+
+            **Note:** all of this repo's streamgages are in NJ/PA, and the
+            live-data staleness check compares against their local time, so
+            the container sets its own clock to US Eastern regardless of
+            the host's timezone -- no setup needed on your end for that.
